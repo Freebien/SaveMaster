@@ -1,5 +1,11 @@
-#!/bin/bash -eux
-
+#!/bin/bash -eu
+# ----------------------------------------------------------------
+# SaveMaster
+# Author : Freebien
+# ---------------------------------------------------------------
+# These are functions for the SaveMaster Bash Script
+#
+# ---------------------------------------------------------------
 
 # --- Globals variables ------------------------------------------
 
@@ -13,11 +19,44 @@ ok(){
 	echo -e "$(printf "%*s\r%s\n" "$(($(tput cols)+11))" "[${green}OK${normal}]" "$1")"
 }
 failed(){
-	# --- Failed Function ----------------------------------------
+	# --- Failed Function ------------------------------------
 	# Permet d'écrire : [OK] à droite de l'écran
 	echo "$(printf "%s\r%s\n" "$(($(tput cols)+11))" "[${red}FAILED${normal}]" "$1")"
 }
 
+action(){
+	# --- Action Function ------------------------------------
+	# Launch the command in argument and will print the message
+	# + and add [OK] or [FAILED]
+	# ------ Arguments ---------------------------------------
+	#	-c command
+	#	-m message
+
+	[ $# -eq 0 ] && echo "Missing arguments..." && exit 1
+	# --- Options Parsing ------------------------------------
+	while getopts "c:m:" opt
+	do
+		case $opt in
+			c)
+				cflag=0
+				command=$OPTARG
+			;;
+			m)
+				mflag=0
+				message=$OPTARG
+			;;
+		esac
+	done
+
+	# --- Processing -----------------------------------------
+	( [ ! $cflag ] || [ ! $mflag ] ) && exit 1
+	if $command
+	then
+		printf "%*b\r%s\n" "$(( $(tput cols) + 9 ))" "[${green}OK${normal}]" "$message"
+	else
+		printf "%*b\r%s\n" "$(( $(tput cols) + 9 ))" "[${red}FAILED${normal}]" "$message"
+	fi
+}
 log(){
 	# --- Log ------------------------------------------------
 	# Fonction permettant de logger les messages
@@ -57,7 +96,7 @@ log(){
 		esac
 	done
 	
-	# --- Traitement ------------------------------------------
+	# --- Traitement -----------------------------------------
 	logger -p local7.$type -t $log_user $message
 }
 
@@ -77,9 +116,6 @@ get_last_file_num(){
 	done | sort -n | tail -n1
 }
 
-# Rotation des sauvegardes
-# Args :
-#	$1 : Dossier
 save_rotate(){
 	# --- Save Rotate ----------------------------------------
 	# Rotation des sauvegardes
@@ -105,15 +141,7 @@ save_rotate(){
 		for ((i=1; i<=$to_suppress; i++))
 		do
 			local n=$(get_last_file_num $name)
-			rm $savepath/$name.tar.gz.$n \
-				&& (
-					ok "Suppressing : $savepath/$name.tar.gz.$n"
-					log -i -m "Suppressed - $savepath/$name.tar.gz.$n"
-				) \
-				|| (
-					failed "Suppressing : $savepath/$name.tar.gz.$n"
-					log -e -m "Suppressed FAILED - $savepath/$name.tar.gz.$n"
-				)
+			action "rm $savepath/$name.tar.gz.$n" "Suppressing : $savepath/$name.tar.gz.$n"
 		done
 	fi
 
@@ -125,23 +153,20 @@ save_rotate(){
 	done
 	
 	# ------ Rotating the compressed saves -------------------
+	echo "Rotating files..."
 	cat $temp | awk -F'.' '{print $NF}' | sort -rn | while read i
 	do
-		mv $savepath/$name.tar.gz.{$i,$((i + 1))}
-	done \
-		&& ok "Rotating files"\
-		|| failed "Rotating files"
+		action "mv $savepath/$name.tar.gz.{$i,$((i + 1))}" "$savepath/$name.tar.gz.$i"
+	done
 	
 	# ------ Moving the one without number -------------------
 	if [ -e $savepath/$name.tar.gz ]
 	then 
-		mv $savepath/$name.tar.gz{,.1} \
-			&& ok "Renaming $name.tar.gz to $name.tar.gz.1" \
-			|| failed "Renaming $name.tar.gz to $name.tar.gz.1"
+		action "mv $savepath/$name.tar.gz{,.1}" "Renaming $name.tar.gz to $name.tar.gz.1"
 	fi
 	
 	# ------ Removing temporary files -------------------------
-	rm $temp
+	action "rm $temp" "Suppressing temp..."
 }
 
 
@@ -157,7 +182,7 @@ launch_save(){
 		log -i -m "Saving - $dir"
 		local name=$(basename $dir)
 		save_rotate $name
-		tar -czf ${savepath}/${name}.tar.gz $dir 2>/dev/null
+		action "tar -czf ${savepath}/${name}.tar.gz $dir 2>/dev/null" "Compressing ${savepath}/${name}"
 	done
 }
 
