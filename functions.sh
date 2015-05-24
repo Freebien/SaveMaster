@@ -13,17 +13,6 @@ green="\e[32m"
 red="\e[31m" 
 normal="\e[0m"
 
-ok(){
-	# --- OK Function ----------------------------------------
-	# Permet d'écrire : [OK] à droite de l'écran
-	echo -e "$(printf "%*s\r%s\n" "$(($(tput cols)+11))" "[${green}OK${normal}]" "$1")"
-}
-failed(){
-	# --- Failed Function ------------------------------------
-	# Permet d'écrire : [OK] à droite de l'écran
-	echo "$(printf "%s\r%s\n" "$(($(tput cols)+11))" "[${red}FAILED${normal}]" "$1")"
-}
-
 action(){
 	# --- Action Function ------------------------------------
 	# Launch the command in argument and will print the message
@@ -41,6 +30,7 @@ action(){
 		printf "%*b\r%s\n" "$(( $(tput cols) + 9 ))" "[${red}FAILED${normal}]" "$2"
 	fi
 }
+
 log(){
 	# --- Log ------------------------------------------------
 	# Fonction permettant de logger les messages
@@ -140,17 +130,17 @@ save_rotate(){
 	echo "Rotating files..."
 	cat $temp | awk -F'.' '{print $NF}' | sort -rn | while read i
 	do
-		action "mv $savepath/$name.tar.gz.{$i,$((i + 1))}" "$savepath/$name.tar.gz.$i"
+		action "mv $savepath/$name.tar.gz.$i $savepath/$name.tar.gz.$((i + 1))" "$savepath/$name.tar.gz.$i to $savepath/$name.tar.gz.$((i+1))"
 	done
 	
 	# ------ Moving the one without number -------------------
 	if [ -e $savepath/$name.tar.gz ]
 	then 
-		action "mv $savepath/$name.tar.gz{,.1}" "Renaming $name.tar.gz to $name.tar.gz.1"
+		action "mv $savepath/$name.tar.gz $savepath/$name.tar.gz.1" "$savepath/$name.tar.gz to $savepath/$name.tar.gz.1"
 	fi
 	
 	# ------ Removing temporary files -------------------------
-	action "rm $temp" "Suppressing temp..."
+	action "rm $temp" "Suppressing temporary files..."
 }
 
 
@@ -166,7 +156,8 @@ launch_save(){
 		log -i -m "Saving - $dir"
 		local name=$(basename $dir)
 		save_rotate $name
-		action "tar -czf ${savepath}/${name}.tar.gz $dir 2>/dev/null" "Compressing ${savepath}/${name}"
+		cd ${dir%/*}
+		action "tar -czf ${savepath}/${name}.tar.gz $(basename $dir)" "Compressing ${savepath}/${name}..."
 	done
 }
 
