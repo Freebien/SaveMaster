@@ -29,32 +29,16 @@ action(){
 	# Launch the command in argument and will print the message
 	# + and add [OK] or [FAILED]
 	# ------ Arguments ---------------------------------------
-	#	-c command
-	#	-m message
+	#	$1 command
+	#	$2 message
 
-	[ $# -eq 0 ] && echo "Missing arguments..." && exit 1
-	# --- Options Parsing ------------------------------------
-	while getopts "c:m:" opt
-	do
-		case $opt in
-			c)
-				cflag=0
-				command=$OPTARG
-			;;
-			m)
-				mflag=0
-				message=$OPTARG
-			;;
-		esac
-	done
-
+	[ $# -ne 2 ] && echo "action should have 2 args $# given..." && exit 1
 	# --- Processing -----------------------------------------
-	( [ ! $cflag ] || [ ! $mflag ] ) && exit 1
-	if $command
+	if $1
 	then
-		printf "%*b\r%s\n" "$(( $(tput cols) + 9 ))" "[${green}OK${normal}]" "$message"
+		printf "%*b\r%s\n" "$(( $(tput cols) + 9 ))" "[${green}OK${normal}]" "$2"
 	else
-		printf "%*b\r%s\n" "$(( $(tput cols) + 9 ))" "[${red}FAILED${normal}]" "$message"
+		printf "%*b\r%s\n" "$(( $(tput cols) + 9 ))" "[${red}FAILED${normal}]" "$2"
 	fi
 }
 log(){
